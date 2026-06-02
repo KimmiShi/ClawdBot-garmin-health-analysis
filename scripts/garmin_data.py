@@ -194,6 +194,7 @@ def fetch_activities(client, days=7, start=None, end=None):
         activity_list = []
         for activity in activities:
             activity_list.append({
+                "activity_id": activity.get("activityId"),
                 "date": activity.get("startTimeLocal", "").split(" ")[0],
                 "activity_type": activity.get("activityType", {}).get("typeKey"),
                 "activity_name": activity.get("activityName"),
@@ -210,6 +211,101 @@ def fetch_activities(client, days=7, start=None, end=None):
     
     except Exception as e:
         return {"error": str(e)}
+
+
+def fetch_activity_splits(client, activity_id):
+    """Fetch lap/split data for a specific activity (per-lap HR, speed, distance, etc.)."""
+    try:
+        splits = client.get_activity_splits(activity_id)
+        lap_dtos = splits.get("lapDTOs", [])
+        
+        lap_list = []
+        for lap in lap_dtos:
+            lap_list.append({
+                "lap_index": lap.get("lapIndex"),
+                "start_time_gmt": lap.get("startTimeGMT"),
+                "distance_meters": lap.get("distance"),
+                "duration_seconds": lap.get("duration"),
+                "moving_duration": lap.get("movingDuration"),
+                "average_speed": lap.get("averageSpeed"),
+                "average_moving_speed": lap.get("averageMovingSpeed"),
+                "max_speed": lap.get("maxSpeed"),
+                "avg_hr": lap.get("averageHR"),
+                "max_hr": lap.get("maxHR"),
+                "calories": lap.get("calories"),
+                "elevation_gain": lap.get("elevationGain"),
+                "elevation_loss": lap.get("elevationLoss"),
+                "max_elevation": lap.get("maxElevation"),
+                "min_elevation": lap.get("minElevation"),
+                "average_run_cadence": lap.get("averageRunCadence"),
+                "max_run_cadence": lap.get("maxRunCadence"),
+                "average_power": lap.get("averagePower"),
+                "max_power": lap.get("maxPower"),
+                "normalized_power": lap.get("normalizedPower"),
+                "intensity_type": lap.get("intensityType"),
+            })
+        
+        return {"activity_id": activity_id, "laps": lap_list, "lap_count": len(lap_list)}
+    
+    except Exception as e:
+        return {"error": str(e), "activity_id": activity_id}
+
+
+def fetch_activity_detail(client, activity_id, metrics=None, sample_interval=1):
+    """Fetch per-second time-series data for a specific activity.
+    
+    Args:
+        client: Garmin client instance
+        activity_id: Activity ID
+        metrics: Comma-separated list of metric keys to include (default: all).
+                 Common keys: directHeartRate, directSpeed, sumDistance, directElevation,
+                 directPower, directRunCadence, directTimestamp
+        sample_interval: Output every N-th data point (default: 1 = every second).
+                         Use 10 for every 10 seconds, 30 for every 30 seconds, etc.
+    """
+    try:
+        details = client.get_activity_details(activity_id)
+        
+        # Build metric key -> index mapping
+        metric_descriptors = details.get("metricDescriptors", [])
+        key_to_idx = {}
+        for i, md in enumerate(metric_descriptors):
+            key_to_idx[md.get("key")] = i
+        
+        detail_data = details.get("activityDetailMetrics", [])
+        
+        # Determine which metrics to extract
+        if metrics:
+            requested_keys = [k.strip() for k in metrics.split(",")]
+        else:
+            requested_keys = list(key_to_idx.keys())
+        
+        # Build index mapping for requested keys only
+        selected = [(k, key_to_idx[k]) for k in requested_keys if k in key_to_idx]
+        
+        # Extract time-series data
+        time_series = []
+        for i, dp in enumerate(detail_data):
+            if i % sample_interval != 0:
+                continue
+            m = dp.get("metrics", [])
+            point = {}
+            for key, idx in selected:
+                point[key] = m[idx] if idx < len(m) else None
+            time_series.append(point)
+        
+        return {
+            "activity_id": activity_id,
+            "total_data_points": len(detail_data),
+            "sample_interval": sample_interval,
+            "sampled_points": len(time_series),
+            "available_metrics": list(key_to_idx.keys()),
+            "selected_metrics": [k for k, _ in selected],
+            "time_series": time_series
+        }
+    
+    except Exception as e:
+        return {"error": str(e), "activity_id": activity_id}
 
 
 def fetch_stress(client, days=7, start=None, end=None):
@@ -318,11 +414,18 @@ def fetch_profile(client):
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch Garmin health data")
-    parser.add_argument("metric", choices=["sleep", "hrv", "body_battery", "heart_rate", "activities", "stress", "summary", "profile"],
-                       help="Type of data to fetch")
+    parser.add_argument("metric", choices=[
+        "sleep", "hrv", "body_battery", "heart_rate", "activities",
+        "stress", "summary", "profile", "activity_splits", "activity_detail"
+    ], help="Type of data to fetch")
     parser.add_argument("--days", type=int, default=7, help="Number of days to fetch (default: 7)")
     parser.add_argument("--start", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", help="End date (YYYY-MM-DD)")
+    parser.add_argument("--activity-id", type=int, help="Activity ID (required for activity_splits/activity_detail)")
+    parser.add_argument("--metrics", help="Comma-separated metric keys for activity_detail (default: all). "
+                       "Common: directHeartRate,directSpeed,sumDistance,directElevation,directPower,directRunCadence")
+    parser.add_argument("--sample-interval", type=int, default=1,
+                       help="Sample every N-th data point for activity_detail (default: 1 = every second)")
     
     args = parser.parse_args()
     
@@ -349,6 +452,16 @@ def main():
         result = fetch_summary(client, args.days, args.start, args.end)
     elif args.metric == "profile":
         result = fetch_profile(client)
+    elif args.metric == "activity_splits":
+        if not args.activity_id:
+            print('{"error": "--activity-id is required for activity_splits. Use activities to find IDs."}')
+            sys.exit(1)
+        result = fetch_activity_splits(client, args.activity_id)
+    elif args.metric == "activity_detail":
+        if not args.activity_id:
+            print('{"error": "--activity-id is required for activity_detail. Use activities to find IDs."}')
+            sys.exit(1)
+        result = fetch_activity_detail(client, args.activity_id, args.metrics, args.sample_interval)
     
     # Output JSON
     print(json.dumps(result, indent=2))
