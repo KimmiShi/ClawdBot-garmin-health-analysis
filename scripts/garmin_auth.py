@@ -19,6 +19,7 @@ except ImportError:
     sys.exit(1)
 
 TOKEN_DIR = Path.home() / ".clawdbot" / "garmin"
+TOKEN_DIR_CN = Path.home() / ".clawdbot" / "garmin_cn"
 CONFIG_FILE = Path(__file__).parent.parent / "config.json"
 
 
@@ -34,17 +35,19 @@ def load_config():
         return None
 
 
-def login(email, password):
+def login(email, password, is_cn=False):
     """Perform login and save tokens using garminconnect's tokenstore."""
     try:
-        print(f"🔐 Logging in as {email}...", file=sys.stderr)
+        region = "中国区" if is_cn else "国际区"
+        print(f"🔐 登录中 ({region}): {email}...", file=sys.stderr)
         
         # Create token directory
-        TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-        tokenstore = str(TOKEN_DIR)
+        token_dir = TOKEN_DIR_CN if is_cn else TOKEN_DIR
+        token_dir.mkdir(parents=True, exist_ok=True)
+        tokenstore = str(token_dir)
         
-        # Create client and login (don't pass tokenstore on first login)
-        client = Garmin(email, password)
+        # Create client and login
+        client = Garmin(email, password, is_cn=is_cn)
         client.login()  # Initial login without tokenstore
         
         # Save tokens to tokenstore
@@ -59,7 +62,7 @@ def login(email, password):
             print(f"✅ Login successful! (Unable to fetch profile: {e})", file=sys.stderr)
         
         # Make tokenstore directory secure
-        TOKEN_DIR.chmod(0o700)
+        token_dir.chmod(0o700)
         
         return True
         
@@ -72,16 +75,17 @@ def login(email, password):
         return False
 
 
-def get_client():
+def get_client(is_cn=False):
     """Get authenticated Garmin client, using saved tokens if available."""
-    tokenstore = str(TOKEN_DIR)
+    token_dir = TOKEN_DIR_CN if is_cn else TOKEN_DIR
+    tokenstore = str(token_dir)
     
-    if not TOKEN_DIR.exists():
+    if not token_dir.exists():
         return None
     
     try:
         # Try to use saved tokens
-        client = Garmin()
+        client = Garmin(is_cn=is_cn)
         client.login(tokenstore=tokenstore)
         
         # Test if tokens still work
@@ -93,11 +97,12 @@ def get_client():
         return None
 
 
-def check_status():
+def check_status(is_cn=False):
     """Check if we have valid authentication."""
-    tokenstore = str(TOKEN_DIR)
+    token_dir = TOKEN_DIR_CN if is_cn else TOKEN_DIR
+    tokenstore = str(token_dir)
     
-    if not TOKEN_DIR.exists():
+    if not token_dir.exists():
         print("❌ Not authenticated", file=sys.stderr)
         print("Run: python3 scripts/garmin_auth.py login", file=sys.stderr)
         return False
@@ -105,7 +110,7 @@ def check_status():
     print(f"✅ Token store found at {tokenstore}", file=sys.stderr)
     
     # Test if they work
-    client = get_client()
+    client = get_client(is_cn=is_cn)
     if client:
         try:
             profile = client.get_user_summary(datetime.now().strftime("%Y-%m-%d"))
@@ -127,9 +132,11 @@ def main():
     login_parser = subparsers.add_parser("login", help="Login to Garmin Connect")
     login_parser.add_argument("--email", help="Garmin account email (or set via env/config)")
     login_parser.add_argument("--password", help="Garmin account password (or set via env/config)")
+    login_parser.add_argument("--cn", action="store_true", help="Use China region (connect.garmin.cn)")
     
     # Status command
-    subparsers.add_parser("status", help="Check authentication status")
+    status_parser = subparsers.add_parser("status", help="Check authentication status")
+    status_parser.add_argument("--cn", action="store_true", help="Check China region tokens")
     
     args = parser.parse_args()
     
@@ -157,11 +164,11 @@ def main():
             print("  4. Clawdbot config: skills.entries.garmin-health-analysis.env", file=sys.stderr)
             sys.exit(1)
         
-        success = login(email, password)
+        success = login(email, password, is_cn=args.cn)
         sys.exit(0 if success else 1)
     
     elif args.command == "status":
-        success = check_status()
+        success = check_status(is_cn=args.cn)
         sys.exit(0 if success else 1)
     
     else:

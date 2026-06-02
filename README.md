@@ -1,151 +1,196 @@
-# Garmin Health Analysis - Clawdbot Skill
+# Garmin Health Analysis - CodeBuddy Skill
 
-> **Talk to your Garmin data naturally** - "what was my fastest speed snowboarding?", "how did I sleep last night?", "what was my heart rate at 3pm?"
+> **用自然语言查询你的 Garmin 数据** — "我昨天跑得最快多少？"、"昨晚睡得怎么样？"、"下午3点心率多少？"
 
-Access 20+ metrics from your Garmin device: sleep stages, Body Battery, HRV, VO2 max, training readiness, body composition, SPO2, and more. Download FIT/GPX files, query elevation/pace at any point, and generate interactive health dashboards.
-
-## 🔵 Looking for Claude Desktop? 
-
-**This is the Clawdbot skill repo.** For standard Claude Desktop, use the dedicated MCP server:
-
-👉 **[garmin-health-mcp-server](https://github.com/eversonl/garmin-health-mcp-server)** - Node.js MCP server for Claude Desktop
+Fork 自 [eversonl/ClawdBot-garmin-health-analysis](https://github.com/eversonl/ClawdBot-garmin-health-analysis)，在此基础上增加了**中国区支持**和**活动详情/分段查询**功能。
 
 ---
 
-## 🚀 Clawdbot Installation
+## 环境准备
 
-**Best for**: Automated health monitoring, scheduled reports, proactive check-ins
+### 1. 安装 Python 依赖
 
 ```bash
-# Install via clawdhub
-clawdhub install garmin-health-analysis
-
-# Or manually
-cd ~/.clawdbot/skills
-git clone https://github.com/eversonl/ClawdBot-garmin-health-analysis.git garmin-health-analysis
-
-# Install dependencies
 pip3 install garminconnect fitparse gpxpy
-
-# Configure credentials and authenticate
-python3 scripts/garmin_auth.py login
 ```
 
-**[📖 Full Setup Guide](SKILL.md)**
+### 2. 登录 Garmin Connect
 
-## ⚡ Features
+**国际区用户（connect.garmin.com）：**
 
-- **Natural language queries**: "How's my recovery this week?" → instant Body Battery analysis
-- **Sleep analysis**: Hours, stages (light/deep/REM), quality scores, trends
-- **Recovery tracking**: Body Battery, HRV, training readiness, stress levels
-- **Workout data**: Activities by type, calories, duration, pace, elevation
-- **Health metrics**: Resting heart rate, VO2 max, body composition, SPO2
-- **Activity files**: Download FIT/GPX for detailed route and performance analysis
-- **Interactive charts**: Beautiful HTML dashboards with Chart.js visualizations
-- **Science-backed insights**: Interpret trends with expert analysis framework
-
-## 📊 Example Queries
-
-**Clawdbot or Claude Desktop:**
-
-> "How did I sleep last night?"
-> 
-> "Show me my health dashboard for the last month"
-> 
-> "Is my HRV improving?"
-> 
-> "What was my fastest speed during yesterday's bike ride?"
-> 
-> "How's my recovery vs. training load balance?"
-> 
-> "Download the GPX file for my Sunday run"
-
-## 🛠️ Key Metrics
-
-| Metric | Range | What It Means |
-|--------|-------|---------------|
-| **Body Battery** | 0-100 | Garmin's recovery score (higher = more energy) |
-| **Sleep Score** | 0-100 | Overall sleep quality (90+ = excellent) |
-| **HRV** | 20-200+ ms | Heart rate variability (higher = better recovery) |
-| **Resting HR** | 40-80 bpm | Lower is generally better (athletes: 40-60) |
-| **Stress** | Low/Med/High | Based on HRV throughout the day |
-
-## 📦 What's Included
-
-```
-garmin-health-analysis/
-├── SKILL.md                       # Clawdbot setup & usage
-├── README.md                      # This file
-├── install.sh                     # Automated installation script
-├── scripts/
-│   ├── garmin_auth.py            # Authentication helper
-│   ├── garmin_data.py            # Fetch health metrics (JSON)
-│   ├── garmin_chart.py           # Generate HTML charts
-│   ├── garmin_data_extended.py   # Extended metrics (VO2, readiness, etc.)
-│   ├── garmin_activity_files.py  # Download FIT/GPX files
-│   └── garmin_query.py           # Time-based queries
-├── references/
-│   ├── health_analysis.md        # Metric interpretation guide
-│   ├── api.md                    # Garmin Connect API docs
-│   └── extended_capabilities.md  # Advanced features
-└── config.example.json           # Credentials template
+```bash
+python3 scripts/garmin_auth.py login --email YOUR_EMAIL --password YOUR_PASSWORD
 ```
 
-## 🔒 Privacy & Security
+**中国区用户（connect.garmin.cn）：**
 
-- Credentials stored locally (never sent to third parties)
-- Session tokens auto-refresh (no repeated logins)
-- Connects only to Garmin's official API
-- No cloud storage or external data sharing
-- Open source - audit the code yourself
+```bash
+python3 scripts/garmin_auth.py login --email YOUR_EMAIL --password YOUR_PASSWORD --cn
+```
 
-## 📚 Documentation
+登录成功后 token 会保存在本地（`~/.clawdbot/garmin/` 或 `~/.clawdbot/garmin_cn/`），后续无需重复登录。
 
-- **[SKILL.md](SKILL.md)** - Complete Clawdbot setup, commands, troubleshooting
-- **[references/health_analysis.md](references/health_analysis.md)** - Science-backed metric interpretation
-- **[references/api.md](references/api.md)** - Garmin Connect API details
-- **[references/extended_capabilities.md](references/extended_capabilities.md)** - Advanced features
+### 3. 验证登录状态
 
-### Looking for Claude Desktop?
-See **[garmin-health-mcp-server](https://github.com/eversonl/garmin-health-mcp-server)** for the dedicated MCP server (you can use both!)
-
-## 🐛 Troubleshooting
-
-**Authentication issues?**
-- Run `python3 scripts/garmin_auth.py login` to refresh tokens
-- Check credentials in config.json or environment variables
-- Try logging into Garmin Connect web to verify account
-
-**Missing data?**
-- Some metrics require specific devices (Body Battery needs HRV-capable watches)
-- Check device was worn during the time period
-- New accounts may have limited history
-
-**Rate limits?**
-- Garmin limits API requests - wait a few minutes and try again
-- Batch queries when possible (use `summary` instead of individual calls)
-
-## 🙏 Credits
-
-- **Author**: EversonL & Claude
-- **Version**: 1.2.0
-- **License**: MIT
-- **Dependencies**: [python-garminconnect](https://github.com/cyberjunky/python-garminconnect), fitparse, gpxpy
-
-## 🔗 Links
-
-- **Clawdbot**: [clawdbot.com](https://clawdbot.com)
-- **ClawdHub**: [clawdhub.com](https://clawdhub.com)
-- **Garmin Connect**: [connect.garmin.com](https://connect.garmin.com)
+```bash
+python3 scripts/garmin_auth.py status          # 国际区
+python3 scripts/garmin_auth.py status --cn     # 中国区
+```
 
 ---
 
-## 💖 Support This Project
+## 使用方法
 
-If you find this skill useful, consider supporting its development:
+### 基础健康数据
 
-<a href="https://buymeacoffee.com/leeev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+所有数据获取脚本都支持 `--cn` 参数切换中国区：
+
+```bash
+# 睡眠数据
+python3 scripts/garmin_data.py sleep --cn
+
+# HRV（心率变异性）
+python3 scripts/garmin_data.py hrv --cn
+
+# Body Battery（身体电量）
+python3 scripts/garmin_data.py body_battery --cn
+
+# 心率
+python3 scripts/garmin_data.py heart_rate --cn
+
+# 活动列表（含 activity_id）
+python3 scripts/garmin_data.py activities --cn
+
+# 压力
+python3 scripts/garmin_data.py stress --cn
+
+# 综合概览
+python3 scripts/garmin_data.py summary --cn
+
+# 个人资料
+python3 scripts/garmin_data.py profile --cn
+```
+
+时间范围可通过 `--days`、`--start`、`--end` 控制：
+
+```bash
+python3 scripts/garmin_data.py sleep --days 30 --cn
+python3 scripts/garmin_data.py activities --start 2026-05-01 --end 2026-05-31 --cn
+```
+
+### 活动分段数据（v1.3.0 新增）
+
+获取某次活动的每圈数据（心率、速度、距离、功率、踏频、海拔等）：
+
+```bash
+python3 scripts/garmin_data.py activity_splits --activity-id 600107330 --cn
+```
+
+### 活动逐秒详情（v1.3.0 新增）
+
+获取某次活动的逐秒时序数据，支持指标过滤和降采样：
+
+```bash
+# 获取全部指标（全精度）
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330 --cn
+
+# 只看心率和速度，每30秒采样一次
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330 \
+  --metrics directHeartRate,directSpeed,sumDistance --sample-interval 30 --cn
+```
+
+**常用逐秒指标：**
+
+| 指标 key | 含义 |
+|----------|------|
+| `directHeartRate` | 实时心率 |
+| `directSpeed` | 实时速度 |
+| `sumDistance` | 累计距离 |
+| `directElevation` | 海拔 |
+| `directPower` | 功率 |
+| `directRunCadence` | 跑步步频 |
+| `directBikeCadence` | 骑行踏频 |
+| `directGpsSpeed` | GPS 速度 |
+| `directGradeAdjustedSpeed` | 纠坡速度 |
+| `directVerticalOscillation` | 垂直振幅 |
+| `directGroundContactTime` | 触地时间 |
+| `directStrideLength` | 步幅 |
+| `directAirTemperature` | 气温 |
+
+> `activity_id` 可从 `activities` 命令的输出中获取。
+
+### 时间点查询
+
+```bash
+python3 scripts/garmin_query.py --metric heart_rate --time "3pm" --cn
+python3 scripts/garmin_query.py --metric stress --time "上午10点" --cn
+```
+
+### 扩展指标
+
+```bash
+python3 scripts/garmin_data_extended.py training_readiness --cn
+python3 scripts/garmin_data_extended.py body_composition --cn
+python3 scripts/garmin_data_extended.py spo2 --cn
+```
+
+### 生成图表
+
+```bash
+python3 scripts/garmin_chart.py sleep --days 7 --cn
+python3 scripts/garmin_chart.py dashboard --days 30 --cn
+```
+
+### 活动文件下载与分析
+
+```bash
+python3 scripts/garmin_activity_files.py download --activity-id 600107330 --cn
+python3 scripts/garmin_activity_files.py analyze --activity-id 600107330 --cn
+```
 
 ---
 
-**Questions?** Open an issue on GitHub or ask in the Clawdbot Discord!
+## 与上游的区别
+
+| 功能 | 上游 | 本 fork |
+|------|------|---------|
+| 中国区登录 (`--cn`) | ❌ | ✅ |
+| 活动分段查询 (`activity_splits`) | ❌ | ✅ |
+| 逐秒详情查询 (`activity_detail`) | ❌ | ✅ |
+| 指标过滤 / 降采样 | ❌ | ✅ |
+| 活动列表含 `activity_id` | ❌ | ✅ |
+
+---
+
+## 项目结构
+
+```
+scripts/
+├── garmin_auth.py            # 认证登录（支持 --cn）
+├── garmin_data.py            # 基础数据 + 分段/详情查询（支持 --cn）
+├── garmin_chart.py           # 生成 HTML 图表
+├── garmin_data_extended.py   # 扩展指标（VO2 max、训练准备度等）
+├── garmin_activity_files.py  # 下载 FIT/GPX 文件
+└── garmin_query.py           # 时间点查询
+```
+
+---
+
+## 常见问题
+
+**Q: 中国区登录报错怎么办？**
+确保加 `--cn` 参数。中国区使用 `connect.garmin.cn`，不加该参数默认连接国际区。
+
+**Q: Token 过期了？**
+重新执行 `login` 命令即可，token 会自动刷新。
+
+**Q: 怎么找到 activity_id？**
+先运行 `python3 scripts/garmin_data.py activities --cn`，每条活动的 `activity_id` 字段即为所需 ID。
+
+---
+
+## Credits
+
+- 原作者: [EversonL](https://github.com/eversonl)
+- Fork 维护: KimmiShi
+- License: MIT

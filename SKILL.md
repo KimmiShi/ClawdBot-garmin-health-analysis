@@ -1,7 +1,7 @@
 ---
 name: garmin-health-analysis
 description: Talk to your Garmin data naturally - "what was my fastest speed snowboarding?", "how did I sleep last night?", "what was my heart rate at 3pm?". Access 20+ metrics (sleep stages, Body Battery, HRV, VO2 max, training readiness, body composition, SPO2), download FIT/GPX files for route analysis, query elevation/pace at any point, and generate interactive health dashboards. From casual "show me this week's workouts" to deep "analyze my recovery vs training load".
-version: 1.2.2
+version: 1.3.0
 author: EversonL & Claude
 homepage: https://github.com/eversonl/ClawdBot-garmin-health-analysis
 metadata: {"clawdbot":{"emoji":"⌚","requires":{"env":["GARMIN_EMAIL","GARMIN_PASSWORD"]},"install":[{"id":"garminconnect","kind":"python","package":"garminconnect","label":"Install garminconnect (pip)"},{"id":"fitparse","kind":"python","package":"fitparse","label":"Install fitparse (pip)"},{"id":"gpxpy","kind":"python","package":"gpxpy","label":"Install gpxpy (pip)"}]}}
@@ -124,7 +124,7 @@ python3 scripts/garmin_data.py hrv --days 30
 # Heart rate (resting, max, min)
 python3 scripts/garmin_data.py heart_rate --days 7
 
-# Activities/workouts
+# Activities/workouts (now includes activity_id)
 python3 scripts/garmin_data.py activities --days 30
 
 # Stress levels
@@ -138,6 +138,51 @@ python3 scripts/garmin_data.py sleep --start 2026-01-01 --end 2026-01-15
 
 # User profile
 python3 scripts/garmin_data.py profile
+```
+
+### Activity Splits (per-lap data)
+
+Get lap-by-lap data for a specific activity — average/max HR, speed, distance, power, cadence per lap:
+
+```bash
+# Get lap splits for an activity (use activities to find activity_id)
+python3 scripts/garmin_data.py activity_splits --activity-id 600107330
+```
+
+Returns per-lap: `lap_index`, `distance_meters`, `duration_seconds`, `average_speed`, `max_speed`, `avg_hr`, `max_hr`, `calories`, `elevation_gain`, `average_power`, `normalized_power`, `average_run_cadence`, `intensity_type`, etc.
+
+### Activity Detail (per-second time-series)
+
+Get second-by-second data for a specific activity — heart rate, speed, distance, elevation, power, cadence, and more:
+
+```bash
+# All metrics, every second (full resolution)
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330
+
+# Specific metrics only (faster, smaller output)
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330 \
+  --metrics directHeartRate,directSpeed,sumDistance
+
+# Sample every 30 seconds (good for quick overview of a long activity)
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330 \
+  --sample-interval 30
+
+# Common metrics:
+#   directHeartRate   - Heart rate (bpm)
+#   directSpeed       - Speed (m/s)
+#   sumDistance        - Cumulative distance (m)
+#   directElevation   - Elevation (m)
+#   directPower       - Power (watts, running/cycling)
+#   directRunCadence  - Cadence (spm for running)
+#   directTimestamp   - Timestamp (ms epoch)
+#   directLatitude    - Latitude
+#   directLongitude   - Longitude
+#   directGradeAdjustedSpeed - Grade-adjusted speed (m/s)
+#   directVerticalOscillation - Vertical oscillation (cm)
+#   directGroundContactTime  - Ground contact time (ms)
+#   directStrideLength - Stride length (cm)
+#   directVerticalRatio - Vertical ratio (%)
+#   directPerformanceCondition - Performance condition
 ```
 
 Output is JSON to stdout. Parse it to answer user questions.
@@ -178,6 +223,9 @@ Charts open automatically in the default browser. They use Chart.js with a moder
 | "Is my HRV improving?" | `garmin_data.py hrv --days 30`, analyze trend |
 | "What workouts did I do this week?" | `garmin_data.py activities --days 7`, list activities with details |
 | "How's my resting heart rate?" | `garmin_data.py heart_rate --days 7`, report average + trend |
+| "Show me my heart rate during my run" | `garmin_data.py activity_detail --activity-id ID --metrics directHeartRate,directSpeed --sample-interval 30` |
+| "What were my lap splits?" | `garmin_data.py activity_splits --activity-id ID`, report per-lap HR + pace |
+| "How did my pace change over the run?" | `garmin_data.py activity_detail --activity-id ID --metrics directSpeed,sumDistance --sample-interval 60` |
 
 ## Key Metrics
 
@@ -276,6 +324,6 @@ When users ask for insights or want to understand their trends, use `references/
 
 - **Created**: 2026-01-25
 - **Author**: EversonL & Claude
-- **Version**: 1.2.0
+- **Version**: 1.3.0
 - **Dependencies**: garminconnect, fitparse, gpxpy (Python libraries)
 - **License**: MIT

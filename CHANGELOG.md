@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.3.0 (2026-06-02)
+
+### 🏃 Activity Detail & Splits - Per-Second and Per-Lap Data
+
+**NEW: Query individual activity details with per-second time-series and per-lap splits!**
+
+- Added `activity_splits` subcommand to `garmin_data.py` — get per-lap HR, speed, distance, power, cadence, elevation for any activity
+- Added `activity_detail` subcommand to `garmin_data.py` — get per-second time-series data with all metrics (HR, speed, distance, elevation, power, cadence, GPS coordinates, and more)
+  - `--metrics` flag to select specific metrics (e.g., `directHeartRate,directSpeed,sumDistance`)
+  - `--sample-interval` flag to downsample output (e.g., `--sample-interval 30` for every 30 seconds)
+- Added `activity_id` field to `activities` output — makes it easy to query specific activity details
+- Updated SKILL.md with new command documentation and question examples
+- 20+ available per-second metrics including: heart rate, speed, distance, elevation, power, cadence, GPS, grade-adjusted speed, vertical oscillation, ground contact time, stride length, vertical ratio, performance condition
+
+**Usage examples:**
+```bash
+# Get lap splits for a run
+python3 scripts/garmin_data.py activity_splits --activity-id 600107330
+
+# Get per-second HR and speed (sampled every 30s)
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330 \
+  --metrics directHeartRate,directSpeed,sumDistance --sample-interval 30
+
+# Get all metrics at full resolution
+python3 scripts/garmin_data.py activity_detail --activity-id 600107330
+```
+
 ## v1.2.2 (2026-01-26)
 
 ### 🧹 Repository Cleanup & Focus
