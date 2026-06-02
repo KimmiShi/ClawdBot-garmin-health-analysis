@@ -2,7 +2,7 @@
 
 > **用自然语言查询你的 Garmin 数据** — "我昨天跑得最快多少？"、"昨晚睡得怎么样？"、"下午3点心率多少？"
 
-Fork 自 [eversonl/ClawdBot-garmin-health-analysis](https://github.com/eversonl/ClawdBot-garmin-health-analysis)，在此基础上增加了**中国区支持**和**活动详情/分段查询**功能。
+Fork 自 [eversonl/ClawdBot-garmin-health-analysis](https://github.com/eversonl/ClawdBot-garmin-health-analysis)，增加了**中国区支持**和**细粒度活动数据分析**（逐秒时序、逐圈分段）。
 
 ---
 
@@ -16,137 +16,69 @@ pip3 install garminconnect fitparse gpxpy
 
 ### 2. 登录 Garmin Connect
 
-**国际区用户（connect.garmin.com）：**
-
-```bash
-python3 scripts/garmin_auth.py login --email YOUR_EMAIL --password YOUR_PASSWORD
-```
-
-**中国区用户（connect.garmin.cn）：**
+中国区用户使用 `--cn` 参数登录：
 
 ```bash
 python3 scripts/garmin_auth.py login --email YOUR_EMAIL --password YOUR_PASSWORD --cn
 ```
 
-登录成功后 token 会保存在本地（`~/.clawdbot/garmin/` 或 `~/.clawdbot/garmin_cn/`），后续无需重复登录。
-
-### 3. 验证登录状态
+国际区用户不加 `--cn`：
 
 ```bash
-python3 scripts/garmin_auth.py status          # 国际区
+python3 scripts/garmin_auth.py login --email YOUR_EMAIL --password YOUR_PASSWORD
+```
+
+登录成功后 token 保存在本地（中国区：`~/.clawdbot/garmin_cn/`，国际区：`~/.clawdbot/garmin/`），后续无需重复登录。
+
+验证登录状态：
+
+```bash
 python3 scripts/garmin_auth.py status --cn     # 中国区
+python3 scripts/garmin_auth.py status          # 国际区
 ```
 
 ---
 
 ## 使用方法
 
+在 CodeBuddy 中直接用自然语言提问即可，以下是一些示例 prompt：
+
 ### 基础健康数据
 
-所有数据获取脚本都支持 `--cn` 参数切换中国区：
+- "我昨晚睡得怎么样？"
+- "最近一周的心率变化趋势"
+- "我的 Body Battery 今天恢复了吗？"
+- "最近7天的压力水平"
+- "我昨天有哪些运动？"
 
-```bash
-# 睡眠数据
-python3 scripts/garmin_data.py sleep --cn
+### 细粒度活动分析（v1.3.0 新增）
 
-# HRV（心率变异性）
-python3 scripts/garmin_data.py hrv --cn
+这是本 fork 的核心增强——支持**逐圈分段**和**逐秒时序**的深度数据分析：
 
-# Body Battery（身体电量）
-python3 scripts/garmin_data.py body_battery --cn
+- "我上周那次跑步，每圈的心率和配速是多少？"
+- "5月29号那次4公里跑，速度随时间怎么变化的？"
+- "我上次骑车，功率输出曲线什么样？"
+- "那次跑步中间心率飙到多少了？在第几公里？"
+- "帮我对比一下那次跑和骑行的平均心率"
+- "那次长跑的后半程，配速掉了吗？"
 
-# 心率
-python3 scripts/garmin_data.py heart_rate --cn
-
-# 活动列表（含 activity_id）
-python3 scripts/garmin_data.py activities --cn
-
-# 压力
-python3 scripts/garmin_data.py stress --cn
-
-# 综合概览
-python3 scripts/garmin_data.py summary --cn
-
-# 个人资料
-python3 scripts/garmin_data.py profile --cn
-```
-
-时间范围可通过 `--days`、`--start`、`--end` 控制：
-
-```bash
-python3 scripts/garmin_data.py sleep --days 30 --cn
-python3 scripts/garmin_data.py activities --start 2026-05-01 --end 2026-05-31 --cn
-```
-
-### 活动分段数据（v1.3.0 新增）
-
-获取某次活动的每圈数据（心率、速度、距离、功率、踏频、海拔等）：
-
-```bash
-python3 scripts/garmin_data.py activity_splits --activity-id 600107330 --cn
-```
-
-### 活动逐秒详情（v1.3.0 新增）
-
-获取某次活动的逐秒时序数据，支持指标过滤和降采样：
-
-```bash
-# 获取全部指标（全精度）
-python3 scripts/garmin_data.py activity_detail --activity-id 600107330 --cn
-
-# 只看心率和速度，每30秒采样一次
-python3 scripts/garmin_data.py activity_detail --activity-id 600107330 \
-  --metrics directHeartRate,directSpeed,sumDistance --sample-interval 30 --cn
-```
-
-**常用逐秒指标：**
-
-| 指标 key | 含义 |
-|----------|------|
-| `directHeartRate` | 实时心率 |
-| `directSpeed` | 实时速度 |
-| `sumDistance` | 累计距离 |
-| `directElevation` | 海拔 |
-| `directPower` | 功率 |
-| `directRunCadence` | 跑步步频 |
-| `directBikeCadence` | 骑行踏频 |
-| `directGpsSpeed` | GPS 速度 |
-| `directGradeAdjustedSpeed` | 纠坡速度 |
-| `directVerticalOscillation` | 垂直振幅 |
-| `directGroundContactTime` | 触地时间 |
-| `directStrideLength` | 步幅 |
-| `directAirTemperature` | 气温 |
-
-> `activity_id` 可从 `activities` 命令的输出中获取。
+支持的逐秒指标包括：实时心率、速度、累计距离、海拔、功率、跑步步频、骑行踏频、GPS速度、纠坡速度、垂直振幅、触地时间、步幅、气温等 20+ 项。
 
 ### 时间点查询
 
-```bash
-python3 scripts/garmin_query.py --metric heart_rate --time "3pm" --cn
-python3 scripts/garmin_query.py --metric stress --time "上午10点" --cn
-```
+- "今天下午3点我的心率是多少？"
+- "早上7点的压力水平"
 
 ### 扩展指标
 
-```bash
-python3 scripts/garmin_data_extended.py training_readiness --cn
-python3 scripts/garmin_data_extended.py body_composition --cn
-python3 scripts/garmin_data_extended.py spo2 --cn
-```
+- "我的训练准备度怎么样？"
+- "最近的血氧数据"
+- "体脂率变化趋势"
 
-### 生成图表
+### 图表与报告
 
-```bash
-python3 scripts/garmin_chart.py sleep --days 7 --cn
-python3 scripts/garmin_chart.py dashboard --days 30 --cn
-```
-
-### 活动文件下载与分析
-
-```bash
-python3 scripts/garmin_activity_files.py download --activity-id 600107330 --cn
-python3 scripts/garmin_activity_files.py analyze --activity-id 600107330 --cn
-```
+- "帮我画个最近一个月的睡眠趋势图"
+- "生成一份健康概览仪表盘"
 
 ---
 
@@ -155,24 +87,10 @@ python3 scripts/garmin_activity_files.py analyze --activity-id 600107330 --cn
 | 功能 | 上游 | 本 fork |
 |------|------|---------|
 | 中国区登录 (`--cn`) | ❌ | ✅ |
-| 活动分段查询 (`activity_splits`) | ❌ | ✅ |
-| 逐秒详情查询 (`activity_detail`) | ❌ | ✅ |
+| 逐圈分段查询 (`activity_splits`) | ❌ | ✅ |
+| 逐秒时序查询 (`activity_detail`) | ❌ | ✅ |
 | 指标过滤 / 降采样 | ❌ | ✅ |
 | 活动列表含 `activity_id` | ❌ | ✅ |
-
----
-
-## 项目结构
-
-```
-scripts/
-├── garmin_auth.py            # 认证登录（支持 --cn）
-├── garmin_data.py            # 基础数据 + 分段/详情查询（支持 --cn）
-├── garmin_chart.py           # 生成 HTML 图表
-├── garmin_data_extended.py   # 扩展指标（VO2 max、训练准备度等）
-├── garmin_activity_files.py  # 下载 FIT/GPX 文件
-└── garmin_query.py           # 时间点查询
-```
 
 ---
 
@@ -185,7 +103,7 @@ scripts/
 重新执行 `login` 命令即可，token 会自动刷新。
 
 **Q: 怎么找到 activity_id？**
-先运行 `python3 scripts/garmin_data.py activities --cn`，每条活动的 `activity_id` 字段即为所需 ID。
+问 "我最近有哪些运动？"，每条活动会返回 `activity_id`，后续可基于此查询详情。
 
 ---
 
